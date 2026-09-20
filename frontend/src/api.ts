@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -45,15 +48,38 @@ export interface ImportPreview {
 }
 
 export interface ShareInfo {
-  workbook_name: string;
-  cloud_provider: string;
-  app_url: string;
-  excel_download_url: string;
-  excel_online_url: string;
-  share_permission: string;
-  file_size_bytes: number;
-  is_synced: boolean;
-  last_updated: string;
+  success?: boolean;
+  connected?: boolean;
+  file_name?: string;
+  file_exists?: boolean;
+  file_id?: string | null;
+  web_url?: string | null;
+  share_url?: string | null;
+  permission?: string;
+  is_synced?: boolean;
+  last_updated?: string | null;
+  message?: string;
+  cloud_provider?: string;
+  workbook_name?: string;
+  app_url?: string;
+  excel_download_url?: string;
+  excel_online_url?: string;
+  share_permission?: string;
+  file_size_bytes?: number;
+  etag?: string;
+}
+
+export interface CloudStatus {
+  connected: boolean;
+  provider: string;
+  file_name: string;
+  file_exists: boolean;
+  file_id?: string | null;
+  web_url?: string | null;
+  share_url?: string | null;
+  last_modified?: string | null;
+  etag?: string | null;
+  message: string;
 }
 
 export const fetchJobs = async (): Promise<JobItem[]> => {
@@ -128,4 +154,13 @@ export const confirmExcelImport = async (file: File, mode: 'new' | 'merge') => {
 export const fetchShareInfo = async (): Promise<ShareInfo> => {
   const res = await api.get('/api/excel/share-info');
   return res.data;
+};
+
+export const fetchCloudStatus = async (): Promise<CloudStatus> => {
+  const res = await api.get('/api/cloud/status');
+  return res.data;
+};
+
+export const openOneDriveLogin = () => {
+  window.open(`${API_BASE_URL}/auth/microsoft/login`, '_blank', 'noopener,noreferrer');
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { JobItem, SummaryData } from './api';
-import { fetchJobs, fetchSummary } from './api';
+import type { CloudStatus, JobItem, SummaryData } from './api';
+import { API_BASE_URL, fetchCloudStatus, fetchJobs, fetchSummary, openOneDriveLogin } from './api';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { JobTrackerTable } from './components/JobTrackerTable';
@@ -15,6 +15,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -34,12 +35,14 @@ export function App() {
 
   const loadData = async () => {
     try {
-      const [fetchedJobs, fetchedSummary] = await Promise.all([
+      const [fetchedJobs, fetchedSummary, fetchedCloudStatus] = await Promise.all([
         fetchJobs(),
-        fetchSummary()
+        fetchSummary(),
+        fetchCloudStatus()
       ]);
       setJobs(fetchedJobs);
       setSummary(fetchedSummary);
+      setCloudStatus(fetchedCloudStatus);
     } catch (err) {
       console.error("Failed to load tracker data:", err);
     }
@@ -60,9 +63,20 @@ export function App() {
     setTimeout(() => setHighlightJobId(null), 4000);
   };
 
-  const handleCopyExcelLink = () => {
-    navigator.clipboard.writeText('http://localhost:8000/api/excel/download');
-    showToast('Excel online link copied to clipboard!');
+  const excelLink = cloudStatus?.web_url || cloudStatus?.share_url || `${API_BASE_URL}/api/excel/download`;
+
+  const handleCopyExcelLink = async () => {
+    try {
+      await navigator.clipboard.writeText(excelLink);
+      showToast('Excel online link copied to clipboard!');
+    } catch {
+      showToast('Unable to copy the link automatically.');
+    }
+  };
+
+  const handleConnectOneDrive = () => {
+    openOneDriveLogin();
+    showToast('Opening Microsoft sign-in to connect OneDrive.');
   };
 
   return (
@@ -91,11 +105,14 @@ export function App() {
           <Dashboard
             summary={summary}
             jobs={jobs}
+            cloudStatus={cloudStatus}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onOpenImportModal={() => setIsImportModalOpen(true)}
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onViewAllJobs={() => setActiveTab('tracker')}
             onCopyExcelLink={handleCopyExcelLink}
+            onConnectOneDrive={handleConnectOneDrive}
+            excelLink={excelLink}
           />
         )}
 

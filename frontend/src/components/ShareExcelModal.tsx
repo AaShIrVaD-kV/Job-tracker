@@ -29,7 +29,9 @@ export const ShareExcelModal: React.FC<ShareExcelModalProps> = ({
 
   const handleCopyLink = () => {
     if (!shareInfo) return;
-    navigator.clipboard.writeText(shareInfo.excel_online_url);
+    const url = shareInfo.excel_online_url || shareInfo.web_url || shareInfo.share_url || shareInfo.excel_download_url || '';
+    if (!url) return;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     onCopySuccess();
     setTimeout(() => setCopied(false), 2000);
@@ -84,7 +86,7 @@ export const ShareExcelModal: React.FC<ShareExcelModalProps> = ({
                 <input
                   type="text"
                   readOnly
-                  value={shareInfo.excel_online_url}
+                  value={shareInfo.excel_online_url || shareInfo.web_url || shareInfo.share_url || shareInfo.excel_download_url || ''}
                   className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none"
                 />
                 <button
@@ -116,7 +118,7 @@ export const ShareExcelModal: React.FC<ShareExcelModalProps> = ({
             {/* Action buttons */}
             <div className="flex items-center justify-end space-x-2 pt-2">
               <a
-                href={shareInfo.excel_download_url}
+                href={shareInfo.excel_download_url || shareInfo.web_url || shareInfo.share_url || '#'}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all"

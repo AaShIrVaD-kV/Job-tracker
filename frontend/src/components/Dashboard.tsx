@@ -1,27 +1,34 @@
 import React from 'react';
-import type { JobItem, SummaryData } from '../api';
+import type { CloudStatus, JobItem, SummaryData } from '../api';
 import { 
   Briefcase, CheckCircle2, FileText, CalendarCheck, Award, 
-  PlusCircle, FileSpreadsheet, ExternalLink, Copy, ArrowRight
+  PlusCircle, FileSpreadsheet, ExternalLink, Copy, ArrowRight,
+  Cloud,
 } from 'lucide-react';
 
 interface DashboardProps {
   summary: SummaryData | null;
   jobs: JobItem[];
+  cloudStatus: CloudStatus | null;
   onOpenAddModal: () => void;
   onOpenImportModal: () => void;
   onOpenShareModal: () => void;
   onViewAllJobs: () => void;
   onCopyExcelLink: () => void;
+  onConnectOneDrive: () => void;
+  excelLink: string;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   summary,
   jobs,
+  cloudStatus,
   onOpenAddModal,
   onOpenImportModal,
   onViewAllJobs,
-  onCopyExcelLink
+  onCopyExcelLink,
+  onConnectOneDrive,
+  excelLink,
 }) => {
   const recentJobs = jobs.slice(-6).reverse();
 
@@ -83,6 +90,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center">
+              <Cloud className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Microsoft OneDrive</div>
+              <div className="text-lg font-bold text-slate-900">
+                {cloudStatus?.connected ? 'Connected' : 'Not Connected'}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={onConnectOneDrive}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700"
+            >
+              {cloudStatus?.connected ? 'Reconnect' : 'Connect OneDrive'}
+            </button>
+            <a
+              href={excelLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+            >
+              Open Excel Tracker
+            </a>
+            <button
+              onClick={onCopyExcelLink}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-purple-100 text-purple-700 text-sm font-semibold hover:bg-purple-200"
+            >
+              Copy Excel Link
+            </button>
+          </div>
+        </div>
+        {cloudStatus?.connected ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 font-medium">
+              <CheckCircle2 className="w-4 h-4" />
+              ✓ OneDrive Connected
+            </span>
+            <span className="font-medium text-slate-700">{cloudStatus.file_name || 'AI_Job_Tracker.xlsx'}</span>
+            <span>Last synchronized: {cloudStatus.last_modified || 'Not yet synchronized'}</span>
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-slate-600">Connect Microsoft OneDrive to keep the canonical Excel workbook in the cloud.</div>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -184,7 +241,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
 
           <a
-            href="http://localhost:8000/api/excel/download"
+            href={excelLink}
             target="_blank"
             rel="noreferrer"
             className="flex items-center space-x-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 transition-all border border-slate-200 text-left"
