@@ -1,7 +1,13 @@
 import React from 'react';
-import { 
-  Briefcase, PlusCircle, Table, Bot, BarChart3, 
-  FileSpreadsheet, ExternalLink, Share2, Sparkles
+import {
+  BarChart3,
+  Bot,
+  Briefcase,
+  ExternalLink,
+  FileSpreadsheet,
+  PlusCircle,
+  Sparkles,
+  Table,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -9,7 +15,6 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   onOpenAddModal: () => void;
   onOpenImportModal: () => void;
-  onOpenShareModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,7 +22,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenAddModal,
   onOpenImportModal,
-  onOpenShareModal
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Briefcase },
@@ -28,12 +32,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      {/* Desktop & Tablet Top Navbar */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            
-            {/* Logo */}
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
                 <Sparkles className="w-5 h-5" />
@@ -43,12 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   AI JOB TRACKER
                 </span>
                 <span className="hidden sm:block text-xs text-sky-600 font-medium">
-                  AI_Job_Tracker.xlsx
+                  Local Storage Mode
                 </span>
               </div>
             </div>
 
-            {/* Nav Tabs */}
             <nav className="hidden md:flex items-center space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -70,7 +70,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               })}
             </nav>
 
-            {/* Quick Action Buttons */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={onOpenAddModal}
@@ -89,14 +88,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Import</span>
               </button>
 
-              <button
-                onClick={onOpenShareModal}
-                className="p-2 text-slate-600 hover:text-sky-600 hover:bg-slate-100 rounded-xl transition-all"
-                title="Excel Workbook Link & Share"
-              >
-                <Share2 className="w-5 h-5" />
-              </button>
-
               <a
                 href="http://localhost:8000/api/excel/download"
                 target="_blank"
@@ -107,12 +98,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Open Excel</span>
               </a>
             </div>
-
           </div>
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-4">
         <div className="flex items-center justify-around">
           {navItems.map((item) => {

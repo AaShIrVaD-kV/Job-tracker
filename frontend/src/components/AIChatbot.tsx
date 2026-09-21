@@ -32,7 +32,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ onJobUpdated, onViewJob })
     {
       id: 'welcome',
       sender: 'ai',
-      text: 'Hello! I am your AI Job Tracker Assistant. You can command me to update status in `AI_Job_Tracker.xlsx` or query your applications!\n\nTry commands like:\n- `J001 applied`\n- `J001 interview scheduled`\n- `How many jobs in Bangalore?`\n- `Show my high priority jobs`'
+      text: 'Hello! I am your AI Job Tracker Assistant. You can command me to update status in your browser local storage or query your applications!\n\nTry commands like:\n- `J001 applied`\n- `J001 interview scheduled`\n- `How many jobs in Bangalore?`\n- `Show my high priority jobs`'
     }
   ]);
 
@@ -98,7 +98,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ onJobUpdated, onViewJob })
 
         <span className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Excel Sync Active</span>
+          <span>Local Storage Active</span>
         </span>
       </div>
 
@@ -171,7 +171,7 @@ export const AIChatbot: React.FC<AIChatbotProps> = ({ onJobUpdated, onViewJob })
           {loading && (
             <div className="flex items-center space-x-2 text-slate-400 text-xs py-2">
               <Sparkles className="w-4 h-4 animate-spin text-sky-500" />
-              <span>AI is updating Excel...</span>
+              <span>AI is updating your local tracker...</span>
             </div>
           )}
         </div>

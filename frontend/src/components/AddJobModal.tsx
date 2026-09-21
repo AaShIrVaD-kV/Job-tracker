@@ -131,7 +131,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
       handleReset();
       onClose();
     } catch (err) {
-      alert("Error saving job to Excel workbook.");
+      alert("Error saving job to local browser storage.");
     } finally {
       setIsSaving(false);
     }
@@ -151,7 +151,7 @@ export const AddJobModal: React.FC<AddJobModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-900">AI Job Description Parser</h2>
-              <p className="text-xs text-slate-500">Extracts 13 columns to update AI_Job_Tracker.xlsx</p>
+              <p className="text-xs text-slate-500">Extracts the job details and stores them in your browser local storage</p>
             </div>
           </div>
           <button 

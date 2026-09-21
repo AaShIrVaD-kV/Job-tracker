@@ -1,27 +1,13 @@
 import os
-from typing import Any, Dict, List, Optional
-from urllib.parse import quote
+from typing import List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse
 
-from backend.models.job import (
-    ChatRequest,
-    ChatResponse,
-    DuplicateCheckRequest,
-    DuplicateCheckResponse,
-    JDParseRequest,
-    JobItem,
-)
-from backend.services import (
-    ai_parser,
-    chatbot_service,
-    cloud_storage_service,
-    duplicate_service,
-    excel_service,
-)
+from backend.models.job import JDParseRequest
+from backend.services import ai_parser, excel_service
 
 load_dotenv()
 
@@ -44,7 +30,7 @@ def build_allowed_origins() -> List[str]:
 
 app = FastAPI(
     title="AI Job Tracker API",
-    description="Backend API for AI Job Tracking Web Application with authoritative openpyxl Excel management",
+    description="Backend API for AI Job Tracking Web Application with local browser-first persistence using Excel export/import and AI parsing.",
     version="1.0.0",
 )
 
@@ -65,49 +51,6 @@ def startup_event():
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "AI Job Tracker Backend is running."}
-
-
-@app.get("/auth/microsoft/login")
-def microsoft_login():
-    try:
-        login_url = cloud_storage_service.cloud_service.auth_service.build_login_url()
-        return RedirectResponse(url=login_url)
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-
-
-@app.get("/auth/microsoft/callback")
-def microsoft_callback(
-    code: Optional[str] = None,
-    state: Optional[str] = None,
-    error: Optional[str] = None,
-    error_description: Optional[str] = None,
-):
-    frontend_url = os.getenv("FRONTEND_URL", os.getenv("APP_URL", "http://localhost:5173")).rstrip("/")
-    if error:
-        message = error_description or "Microsoft authentication was cancelled or failed."
-        return RedirectResponse(url=f"{frontend_url}/?auth=error&message={quote(message)}")
-
-    expected_state = cloud_storage_service.cloud_service.auth_service.pending_state
-    result = cloud_storage_service.cloud_service.auth_service.handle_callback(code, state, expected_state)
-    if not result["success"]:
-        return RedirectResponse(url=f"{frontend_url}/?auth=error&message={quote(result.get('message', 'login_failed'))}")
-    return RedirectResponse(url=f"{frontend_url}/?auth=success")
-
-
-@app.get("/auth/microsoft/status")
-def microsoft_status():
-    return cloud_storage_service.cloud_service.auth_service.get_status()
-
-
-@app.post("/auth/microsoft/logout")
-def microsoft_logout():
-    return cloud_storage_service.cloud_service.auth_service.logout()
-
-
-@app.get("/api/cloud/status")
-def cloud_status():
-    return cloud_storage_service.cloud_service.get_cloud_status()
 
 
 @app.post("/api/jd/parse")
@@ -146,73 +89,6 @@ async def parse_image_job(
     return parsed
 
 
-@app.post("/api/jobs/check-duplicate", response_model=DuplicateCheckResponse)
-def check_duplicate(payload: DuplicateCheckRequest):
-    is_dup, matching_id, matching_job = duplicate_service.check_duplicate(
-        company=payload.company,
-        job_role=payload.job_role,
-        location=payload.location,
-    )
-    if is_dup:
-        return DuplicateCheckResponse(
-            is_duplicate=True,
-            matching_job_id=matching_id,
-            matching_job=matching_job,
-            message=f"This job may already exist as {matching_id} ({payload.company} - {payload.job_role} - {payload.location}).",
-        )
-    return DuplicateCheckResponse(is_duplicate=False)
-
-
-@app.get("/api/jobs")
-def list_jobs():
-    jobs = excel_service.get_all_jobs()
-    return {"total": len(jobs), "jobs": jobs}
-
-
-@app.post("/api/jobs")
-def save_job(job: JobItem):
-    job_dict = job.dict(by_alias=False)
-    added = excel_service.add_job(job_dict)
-    sync_result = cloud_storage_service.cloud_service.sync_workbook_to_cloud()
-    return {
-        "success": True,
-        "message": f"Job {added['job_id']} added to Excel workbook successfully.",
-        "job": added,
-        "cloud_sync": sync_result,
-    }
-
-
-@app.put("/api/jobs/{job_id}")
-def update_job_endpoint(job_id: str, updates: Dict[str, Any]):
-    success, updated_job = excel_service.update_job(job_id, updates)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found in Excel workbook.")
-    sync_result = cloud_storage_service.cloud_service.sync_workbook_to_cloud()
-    return {"success": True, "message": f"Job {job_id} updated.", "job": updated_job, "cloud_sync": sync_result}
-
-
-@app.delete("/api/jobs/{job_id}")
-def delete_job_endpoint(job_id: str):
-    success = excel_service.delete_job(job_id)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
-    sync_result = cloud_storage_service.cloud_service.sync_workbook_to_cloud()
-    return {"success": True, "message": f"Job {job_id} deleted.", "cloud_sync": sync_result}
-
-
-@app.post("/api/chat", response_model=ChatResponse)
-def chat_endpoint(payload: ChatRequest):
-    res = chatbot_service.process_chat_message(payload.message)
-    if res.get("action_taken") == "update_status":
-        sync_result = cloud_storage_service.cloud_service.sync_workbook_to_cloud()
-        res["cloud_sync"] = sync_result
-    return ChatResponse(**res)
-
-
-@app.get("/api/summary")
-def get_summary():
-    data = excel_service.get_summary_data()
-    return data
 
 
 @app.post("/api/excel/import-preview")
@@ -222,8 +98,7 @@ async def import_preview(file: UploadFile = File(...)):
 
     contents = await file.read()
     try:
-        preview = excel_service.preview_import_file(contents, file.filename)
-        return preview
+        return excel_service.preview_import_file(contents, file.filename)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -235,27 +110,13 @@ async def import_confirm(file: UploadFile = File(...), mode: str = Form(...)):
 
     contents = await file.read()
     try:
-        res = excel_service.confirm_import_file(contents, mode)
-        sync_result = cloud_storage_service.cloud_service.sync_workbook_to_cloud()
-        res["cloud_sync"] = sync_result
-        return res
+        return excel_service.confirm_import_file(contents, mode)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/excel/download")
 def download_excel():
-    if cloud_storage_service.cloud_service.is_connected():
-        try:
-            payload = cloud_storage_service.cloud_service.download_cloud_workbook()
-            return Response(
-                content=payload,
-                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                headers={"Content-Disposition": "attachment; filename=AI_Job_Tracker.xlsx"},
-            )
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"OneDrive download failed: {str(exc)}")
-
     path = excel_service.get_workbook_path()
     if not os.path.exists(path):
         excel_service.init_tracker_workbook()
@@ -268,5 +129,10 @@ def download_excel():
 
 @app.get("/api/excel/share-info")
 def share_info():
-    info = cloud_storage_service.cloud_service.get_cloud_metadata()
-    return info
+    return {
+        "success": True,
+        "mode": "local_storage",
+        "message": "The browser local storage is the source of truth for this job tracker.",
+        "workbook_name": "AI_Job_Tracker.xlsx",
+        "cloud_provider": "Local Storage",
+    }

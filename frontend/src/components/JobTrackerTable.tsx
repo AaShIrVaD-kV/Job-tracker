@@ -43,7 +43,7 @@ export const JobTrackerTable: React.FC<JobTrackerTableProps> = ({
       onRefresh();
       setEditingJobId(null);
     } catch (err) {
-      alert("Failed to update job in Excel.");
+      alert("Failed to update job in local storage.");
     }
   };
 
@@ -62,7 +62,7 @@ export const JobTrackerTable: React.FC<JobTrackerTableProps> = ({
   };
 
   const handleDelete = async (jobId: string) => {
-    if (!confirm(`Are you sure you want to delete job ${jobId} from AI_Job_Tracker.xlsx?`)) return;
+    if (!confirm(`Are you sure you want to delete job ${jobId} from local storage?`)) return;
     try {
       await deleteJob(jobId);
       onRefresh();
@@ -95,10 +95,10 @@ export const JobTrackerTable: React.FC<JobTrackerTableProps> = ({
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-              <span>Job Tracker Workbook</span>
+              <span>Local Job Tracker</span>
             </h1>
             <p className="text-xs text-slate-500">
-              Reading and writing directly to <span className="font-semibold text-slate-700">AI_Job_Tracker.xlsx</span> (13 Columns)
+              Reading and writing from <span className="font-semibold text-slate-700">browser local storage</span> as the source of truth
             </p>
           </div>
 

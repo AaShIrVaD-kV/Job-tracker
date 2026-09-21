@@ -1,34 +1,31 @@
 import React from 'react';
-import type { CloudStatus, JobItem, SummaryData } from '../api';
-import { 
-  Briefcase, CheckCircle2, FileText, CalendarCheck, Award, 
-  PlusCircle, FileSpreadsheet, ExternalLink, Copy, ArrowRight,
-  Cloud,
+import type { JobItem, SummaryData } from '../api';
+import {
+  Award,
+  Briefcase,
+  CalendarCheck,
+  CheckCircle2,
+  Copy,
+  FileSpreadsheet,
+  FileText,
+  PlusCircle,
+  ArrowRight,
 } from 'lucide-react';
 
 interface DashboardProps {
   summary: SummaryData | null;
   jobs: JobItem[];
-  cloudStatus: CloudStatus | null;
   onOpenAddModal: () => void;
   onOpenImportModal: () => void;
-  onOpenShareModal: () => void;
   onViewAllJobs: () => void;
-  onCopyExcelLink: () => void;
-  onConnectOneDrive: () => void;
-  excelLink: string;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   summary,
   jobs,
-  cloudStatus,
   onOpenAddModal,
   onOpenImportModal,
   onViewAllJobs,
-  onCopyExcelLink,
-  onConnectOneDrive,
-  excelLink,
 }) => {
   const recentJobs = jobs.slice(-6).reverse();
 
@@ -55,21 +52,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
-      
-      {/* Top Banner */}
       <div className="bg-gradient-to-r from-sky-900 via-slate-900 to-sky-950 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center space-x-2 bg-sky-500/20 text-sky-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
-              <span>Authoritative Excel Tracker</span>
+              <span>Local Storage Mode</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              AI Job Tracker
-            </h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">AI Job Tracker</h1>
             <p className="text-slate-300 text-sm mt-1 max-w-xl">
-              Paste any Job Description. AI extracts the 13 required fields, checks duplicates, and continuously updates <span className="font-semibold text-sky-400">AI_Job_Tracker.xlsx</span>.
+              Your job tracker is stored locally in this browser. Jobs remain available after refresh and browser restart.
             </p>
           </div>
 
@@ -93,58 +86,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center">
-              <Cloud className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Microsoft OneDrive</div>
-              <div className="text-lg font-bold text-slate-900">
-                {cloudStatus?.connected ? 'Connected' : 'Not Connected'}
-              </div>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={onConnectOneDrive}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700"
-            >
-              {cloudStatus?.connected ? 'Reconnect' : 'Connect OneDrive'}
-            </button>
-            <a
-              href={excelLink}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
-            >
-              Open Excel Tracker
-            </a>
-            <button
-              onClick={onCopyExcelLink}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-purple-100 text-purple-700 text-sm font-semibold hover:bg-purple-200"
-            >
-              Copy Excel Link
-            </button>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Local Storage Status</div>
+            <div className="text-lg font-bold text-slate-900">✓ Local Storage Active</div>
           </div>
         </div>
-        {cloudStatus?.connected ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              ✓ OneDrive Connected
-            </span>
-            <span className="font-medium text-slate-700">{cloudStatus.file_name || 'AI_Job_Tracker.xlsx'}</span>
-            <span>Last synchronized: {cloudStatus.last_modified || 'Not yet synchronized'}</span>
-          </div>
-        ) : (
-          <div className="mt-4 text-sm text-slate-600">Connect Microsoft OneDrive to keep the canonical Excel workbook in the cloud.</div>
-        )}
+        <div className="mt-4 text-sm text-slate-600">
+          Your job tracker is stored locally in this browser. Use Export Excel or Backup Tracker to keep a copy outside this device.
+        </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Jobs</span>
@@ -154,7 +110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div>
             <div className="text-3xl font-bold text-slate-900">{summary?.total_jobs ?? jobs.length}</div>
-            <div className="text-xs text-slate-500 mt-1">AI_Job_Tracker.xlsx</div>
+            <div className="text-xs text-slate-500 mt-1">Stored in browser</div>
           </div>
         </div>
 
@@ -209,14 +165,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="text-xs text-emerald-600/80 mt-1">Offers Received</div>
           </div>
         </div>
-
       </div>
 
-      {/* Quick Actions & Excel Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
-          Quick Actions & Permanent Excel Controls
-        </h2>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={onOpenAddModal}
@@ -225,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <PlusCircle className="w-5 h-5 text-sky-600 shrink-0" />
             <div>
               <div className="text-sm font-semibold">Paste JD</div>
-              <div className="text-[11px] text-sky-600">AI extraction preview</div>
+              <div className="text-[11px] text-sky-600">AI extraction</div>
             </div>
           </button>
 
@@ -236,42 +188,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
               <div className="text-sm font-semibold">Import Excel</div>
-              <div className="text-[11px] text-emerald-600">Merge or new tracker</div>
+              <div className="text-[11px] text-emerald-600">Merge or replace</div>
             </div>
           </button>
 
-          <a
-            href={excelLink}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center space-x-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 transition-all border border-slate-200 text-left"
-          >
-            <ExternalLink className="w-5 h-5 text-slate-600 shrink-0" />
-            <div>
-              <div className="text-sm font-semibold">Open Excel</div>
-              <div className="text-[11px] text-slate-500">AI_Job_Tracker.xlsx</div>
-            </div>
-          </a>
-
           <button
-            onClick={onCopyExcelLink}
+            onClick={() => navigator.clipboard.writeText('Local storage active')}
             className="flex items-center space-x-3 p-3.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 transition-all border border-purple-100 text-left"
           >
             <Copy className="w-5 h-5 text-purple-600 shrink-0" />
             <div>
-              <div className="text-sm font-semibold">Copy Link</div>
-              <div className="text-[11px] text-purple-600">Share workbook link</div>
+              <div className="text-sm font-semibold">Storage Mode</div>
+              <div className="text-[11px] text-purple-600">Browser local only</div>
+            </div>
+          </button>
+
+          <button
+            onClick={onOpenImportModal}
+            className="flex items-center space-x-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 transition-all border border-slate-200 text-left"
+          >
+            <FileSpreadsheet className="w-5 h-5 text-slate-600 shrink-0" />
+            <div>
+              <div className="text-sm font-semibold">Export Excel</div>
+              <div className="text-[11px] text-slate-500">Download tracker</div>
             </div>
           </button>
         </div>
       </div>
 
-      {/* Recent Applications Table */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Recent Applications</h2>
-            <p className="text-xs text-slate-500">Latest entries updated in AI_Job_Tracker.xlsx</p>
+            <p className="text-xs text-slate-500">Latest entries from local storage</p>
           </div>
           <button
             onClick={onViewAllJobs}
@@ -330,7 +279,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
       </div>
-
     </div>
   );
 };
