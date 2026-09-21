@@ -1,7 +1,7 @@
 import os
 import io
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -23,6 +23,38 @@ EXCEL_COLUMNS = [
     "Assessment"
 ]
 
+HEADER_ALIASES = {
+    "jobid": "Job ID",
+    "id": "Job ID",
+    "priority": "Priority",
+    "company": "Company",
+    "companyname": "Company",
+    "jobrole": "Job Role",
+    "role": "Job Role",
+    "jobtitle": "Job Role",
+    "position": "Job Role",
+    "functioncategory": "Function / Category",
+    "function": "Function / Category",
+    "category": "Function / Category",
+    "location": "Location",
+    "joblocation": "Location",
+    "city": "Location",
+    "workmode": "Work Mode",
+    "worktype": "Work Mode",
+    "mode": "Work Mode",
+    "experienceeligibility": "Experience / Eligibility",
+    "experience": "Experience / Eligibility",
+    "eligibility": "Experience / Eligibility",
+    "applicationdate": "Application Date",
+    "applieddate": "Application Date",
+    "dateapplied": "Application Date",
+    "applicationstatus": "Application Status",
+    "status": "Application Status",
+    "interview": "Interview",
+    "offer": "Offer",
+    "assessment": "Assessment",
+}
+
 CATEGORIES = [
     "Data Analytics", "Business Analytics", "Finance", "Accounting", 
     "HR", "Business Intelligence", "IT", "Consulting", "MIS", "Other"
@@ -38,6 +70,35 @@ YES_NO = ["Yes", "No"]
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 WORKBOOK_FILENAME = "AI_Job_Tracker.xlsx"
 WORKBOOK_PATH = os.path.join(DATA_DIR, WORKBOOK_FILENAME)
+
+
+def normalize_header_name(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "", text)
+    return text
+
+
+def match_excel_header(value: Any) -> Optional[str]:
+    normalized = normalize_header_name(value)
+    if not normalized:
+        return None
+    return HEADER_ALIASES.get(normalized)
+
+
+def select_import_worksheet(wb: openpyxl.Workbook):
+    ignored_tokens = ("summary", "dashboard", "analytics")
+    preferred = None
+    for ws in wb.worksheets:
+        title_norm = normalize_header_name(ws.title)
+        if any(token in title_norm for token in ignored_tokens):
+            continue
+        preferred = ws
+        break
+    if preferred is not None:
+        return preferred
+    return wb.active if wb.worksheets else None
 
 
 def get_workbook_path() -> str:
@@ -456,36 +517,28 @@ def delete_job(job_id: str) -> bool:
 def preview_import_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     try:
         wb_import = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
-        ws = wb_import.active
-        
-        # Read header row
+        ws = select_import_worksheet(wb_import)
+        if ws is None:
+            raise ValueError("No valid worksheet found in the uploaded file.")
+
         headers = []
         for col in range(1, ws.max_column + 1):
             h_val = ws.cell(row=1, column=col).value
             if h_val:
                 headers.append(str(h_val).strip())
 
-        # Match columns with standard 13
         matched_columns = []
         ignored_columns = []
-
-        standard_lookup = {col.lower().replace(" ", "").replace("/", ""): col for col in EXCEL_COLUMNS}
-
         for h in headers:
-            normalized = h.lower().replace(" ", "").replace("/", "").replace("_", "")
-            found = None
-            for key, val in standard_lookup.items():
-                if key in normalized or normalized in key:
-                    found = val
-                    break
-            if found:
-                matched_columns.append({"source": h, "target": found})
+            matched = match_excel_header(h)
+            if matched:
+                matched_columns.append({"source": h, "target": matched})
             else:
                 ignored_columns.append(h)
 
         data_rows_count = 0
         for r in range(2, ws.max_row + 1):
-            row_has_val = any(ws.cell(row=r, column=c).value is not None for c in range(1, len(headers) + 1))
+            row_has_val = any(ws.cell(row=r, column=c).value is not None for c in range(1, ws.max_column + 1))
             if row_has_val:
                 data_rows_count += 1
 
@@ -504,29 +557,54 @@ def preview_import_file(file_bytes: bytes, filename: str) -> Dict[str, Any]:
 
 def confirm_import_file(file_bytes: bytes, mode: str) -> Dict[str, Any]:
     # Mode can be 'new' (reset AI_Job_Tracker.xlsx) or 'merge' (append non-duplicates)
-    preview_info = preview_import_file(file_bytes, "uploaded.xlsx")
     wb_import = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
-    ws_import = wb_import.active
+    ws_import = select_import_worksheet(wb_import)
+    if ws_import is None:
+        wb_import.close()
+        raise ValueError("No valid worksheet found in the uploaded file.")
 
-    # Column index map for import file
+    preview_info = preview_import_file(file_bytes, "uploaded.xlsx")
+    matched_mapping = {m["target"]: m["source"] for m in preview_info["matched_columns"]}
+
     header_indices = {}
     for col in range(1, ws_import.max_column + 1):
         h_val = ws_import.cell(row=1, column=col).value
         if h_val:
-            header_indices[str(h_val).strip()] = col
+            target = match_excel_header(h_val)
+            if target:
+                header_indices[target] = col
 
     target_path = get_workbook_path()
-
     if mode == "new":
         if os.path.exists(target_path):
             os.remove(target_path)
         init_tracker_workbook()
 
     existing_jobs = get_all_jobs()
-    existing_job_ids = {j["job_id"].upper() for j in existing_jobs}
-    
-    # Helper to map standard field to imported column value
-    matched_mapping = {m["target"]: m["source"] for m in preview_info["matched_columns"]}
+    existing_job_ids = {str(j["job_id"]).upper() for j in existing_jobs if j.get("job_id")}
+    used_ids = set(existing_job_ids)
+
+    def get_val(row_number: int, target_col_name: str, default: str = "") -> str:
+        idx = header_indices.get(target_col_name)
+        if idx is None:
+            return default
+        value = ws_import.cell(row=row_number, column=idx).value
+        return str(value).strip() if value is not None else default
+
+    def allocate_job_id(raw_id: str) -> str:
+        candidate = str(raw_id or "").strip()
+        if candidate:
+            normalized = candidate.upper()
+            if normalized not in used_ids:
+                used_ids.add(normalized)
+                return candidate
+        next_idx = 1
+        while True:
+            new_id = f"J{next_idx:03d}"
+            if new_id not in used_ids:
+                used_ids.add(new_id)
+                return new_id
+            next_idx += 1
 
     imported_count = 0
     duplicate_count = 0
@@ -536,53 +614,52 @@ def confirm_import_file(file_bytes: bytes, mode: str) -> Dict[str, Any]:
         if not row_has_val:
             continue
 
-        def get_val(target_col_name: str, default: str = "") -> str:
-            src_col = matched_mapping.get(target_col_name)
-            if src_col and src_col in header_indices:
-                idx = header_indices[src_col]
-                v = ws_import.cell(row=r, column=idx).value
-                return str(v).strip() if v is not None else default
-            return default
-
-        incoming_company = get_val("Company")
-        incoming_role = get_val("Job Role")
-        incoming_loc = get_val("Location")
+        incoming_company = get_val(r, "Company")
+        incoming_role = get_val(r, "Job Role")
+        incoming_loc = get_val(r, "Location")
 
         if not incoming_company and not incoming_role:
             continue
 
-        # Check for duplicate if mode is merge
         if mode == "merge":
             is_dup = False
             for ej in existing_jobs:
-                if (ej.get("company", "").lower() == incoming_company.lower() and
-                    ej.get("job_role", "").lower() == incoming_role.lower() and
-                    ej.get("location", "").lower() == incoming_loc.lower()):
+                if (
+                    str(ej.get("company", "")).strip().lower() == incoming_company.strip().lower()
+                    and str(ej.get("job_role", "")).strip().lower() == incoming_role.strip().lower()
+                    and str(ej.get("location", "")).strip().lower() == incoming_loc.strip().lower()
+                ):
                     is_dup = True
                     break
             if is_dup:
                 duplicate_count += 1
                 continue
 
-        job_id = get_val("Job ID")
-        if not job_id or job_id.upper() in existing_job_ids or mode == "merge":
-            job_id = get_next_job_id()
-            existing_job_ids.add(job_id.upper())
+        job_id = get_val(r, "Job ID")
+        if not job_id:
+            job_id = allocate_job_id("")
+        else:
+            candidate_id = str(job_id).strip()
+            if candidate_id.upper() in used_ids and mode == "merge":
+                job_id = allocate_job_id("")
+            else:
+                used_ids.add(candidate_id.upper())
+                job_id = candidate_id
 
         job_dict = {
             "job_id": job_id,
-            "priority": get_val("Priority", "Medium") or "Medium",
+            "priority": get_val(r, "Priority", "Medium") or "Medium",
             "company": incoming_company or "Unknown Company",
             "job_role": incoming_role or "Role Not Specified",
-            "function_category": get_val("Function / Category", "Other") or "Other",
+            "function_category": get_val(r, "Function / Category", "Other") or "Other",
             "location": incoming_loc or "Not Mentioned",
-            "work_mode": get_val("Work Mode", "Not Mentioned") or "Not Mentioned",
-            "experience_eligibility": get_val("Experience / Eligibility", "Not Mentioned") or "Not Mentioned",
-            "application_date": get_val("Application Date", ""),
-            "application_status": get_val("Application Status", "Saved") or "Saved",
-            "interview": get_val("Interview", "No") or "No",
-            "offer": get_val("Offer", "No") or "No",
-            "assessment": get_val("Assessment", "No") or "No"
+            "work_mode": get_val(r, "Work Mode", "Not Mentioned") or "Not Mentioned",
+            "experience_eligibility": get_val(r, "Experience / Eligibility", "Not Mentioned") or "Not Mentioned",
+            "application_date": get_val(r, "Application Date", ""),
+            "application_status": get_val(r, "Application Status", "Saved") or "Saved",
+            "interview": get_val(r, "Interview", "No") or "No",
+            "offer": get_val(r, "Offer", "No") or "No",
+            "assessment": get_val(r, "Assessment", "No") or "No"
         }
 
         add_job(job_dict)

@@ -1,6 +1,9 @@
+import io
 import os
 import sys
 import unittest
+
+import openpyxl
 
 # Add workspace root to python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -122,6 +125,63 @@ class TestAIJobTrackerBackend(unittest.TestCase):
         self.assertIsInstance(combined["company"], str)
         self.assertIsInstance(combined["job_role"], str)
         self.assertIsInstance(combined["location"], str)
+
+    def test_07_excel_import_accepts_id_alias_and_ignores_summary_sheet(self):
+        workbook = openpyxl.Workbook()
+        tracker = workbook.active
+        tracker.title = "MASTER JOB TRACKER"
+        headers = [
+            "ID",
+            "Priority",
+            "Company",
+            "Job Role",
+            "Function / Category",
+            "Location",
+            "Work Mode",
+            "Experience / Eligibility",
+            "Application Date",
+            "Application Status",
+            "Interview",
+            "Offer",
+            "Assessment",
+        ]
+        tracker.append(headers)
+        tracker.append([
+            "J001",
+            "High",
+            "Contoso",
+            "Data Analyst",
+            "Data Analytics",
+            "Bangalore",
+            "Hybrid",
+            "2-4 years",
+            "2026-09-12",
+            "Applied",
+            "No",
+            "No",
+            "No",
+        ])
+
+        summary = workbook.create_sheet("SUMMARY")
+        summary.append(["Total Jobs", "5"])
+
+        buf = io.BytesIO()
+        workbook.save(buf)
+        buf.seek(0)
+
+        preview = excel_service.preview_import_file(buf.getvalue(), "Job Application Tracker - Data Analytics - September 2026.xlsx")
+        self.assertEqual(preview["columns_recognized_count"], 13)
+        self.assertEqual(preview["total_jobs_found"], 1)
+        self.assertIn({"source": "ID", "target": "Job ID"}, preview["matched_columns"])
+
+        import_result = excel_service.confirm_import_file(buf.getvalue(), "new")
+        self.assertEqual(import_result["imported_count"], 1)
+        jobs = excel_service.get_all_jobs()
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["job_id"], "J001")
+        self.assertEqual(jobs[0]["company"], "Contoso")
+        self.assertEqual(jobs[0]["job_role"], "Data Analyst")
+        self.assertEqual(jobs[0]["location"], "Bangalore")
 
 if __name__ == "__main__":
     unittest.main()
